@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solomon Instances Viewer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 1200px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        label {
+            font-weight: 600;
+            color: #333;
+        }
+        
+        select {
+            padding: 10px 15px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: border-color 0.3s ease;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .instance-info {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin-bottom: 20px;
+            font-weight: 500;
+        }
+        
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 40px;
+        }
+        
+        .plot-container {
+            display: flex;
+            justify-content: center;
+            margin: 30px 0;
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+        }
+        
+        svg {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            background: linear-gradient(145deg, #ffffff 0%, #f0f2f5 100%);
+            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .depot {
+            fill: #ff4757;
+            stroke: #ff3742;
+            stroke-width: 3;
+            filter: drop-shadow(2px 2px 4px rgba(0,0,0,0.3));
+        }
+        
+        .customer {
+            fill: #3742fa;
+            stroke: #2f3542;
+            stroke-width: 1.5;
+            transition: all 0.3s ease;
+        }
+        
+        .customer:hover {
+            fill: #ffa502;
+            stroke: #ff9500;
+            stroke-width: 2;
+            cursor: pointer;
+        }
+        
+        .depot-label {
+            font-size: 14px;
+            font-weight: bold;
+            text-anchor: middle;
+            fill: white;
+            pointer-events: none;
+        }
+        
+        .grid-line {
+            stroke: #e1e5e9;
+            stroke-width: 1;
+            opacity: 0.5;
+        }
+        
+        .axis {
+            stroke: #636e72;
+            stroke-width: 2;
+        }
+        
+        .axis-label {
+            font-size: 14px;
+            font-weight: bold;
+            fill: #636e72;
+            text-anchor: middle;
+        }
+        
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin: 20px 0;
+            flex-wrap: wrap;
+        }
+        
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 25px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            font-weight: 500;
+        }
+        
+        .legend-circle {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-top: 30px;
+        }
+        
+        .stat-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+        
+        .stat-title {
+            font-size: 0.9em;
+            font-weight: 600;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+        
+        .stat-value {
+            font-size: 1.4em;
+            font-weight: bold;
+            color: #ffeaa7;
+        }
+        
+        .tooltip {
+            position: absolute;
+            background: rgba(0,0,0,0.9);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+            max-width: 250px;
+        }
+        
+        .error {
+            color: #d63031;
+            text-align: center;
+            padding: 20px;
+            background: #fdcb6e;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+
+        .github-link {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px 15px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        
+        .github-link:hover {
+            background: rgba(0,0,0,0.9);
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body>
+    <a href="https://github.com/DataGems/Solomon_Instance_Viewer" class="github-link" target="_blank">
+        📁 View Source
+    </a>
+
+    <div class="container">
+        <h1>🚛 Solomon Instances Interactive Viewer</h1>
+        <div class="subtitle">Vehicle Routing Problem Benchmark Instances</div>
+        
+        <div class="controls">
+            <div class="control-group">
+                <label for="instanceSelect">Select Instance:</label>
+                <select id="instanceSelect">
+                    <option value="">Choose an instance...</option>
+                </select>
+            </div>
+        </div>
+        
+        <div id="instanceInfo" class="instance-info" style="display: none;"></div>
+        
+        <div id="loadingMessage" class="loading" style="display: none;">
+            Loading instance data...
+        </div>
+        
+        <div id="errorMessage" class="error" style="display: none;"></div>
+        
+        <div id="plotContainer" class="plot-container" style="display: none;">
+            <svg width="800" height="600" viewBox="0 0 800 600" id="plotSvg">
+                <defs>
+                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#e1e5e9" stroke-width="1" opacity="0.3"/>
+                    </pattern>
+                </defs>
+                <rect width="100%" height="100%" fill="url(#grid)" />
+                
+                <g transform="translate(60, 540)">
+                    <line x1="0" y1="0" x2="680" y2="0" class="axis"/>
+                    <line x1="0" y1="0" x2="0" y2="-480" class="axis"/>
+                    <g id="gridLines"></g>
+                    <g id="locations"></g>
+                </g>
+                
+                <text x="400" y="580" class="axis-label">X Coordinate</text>
+                <text x="30" y="300" class="axis-label" transform="rotate(-90, 30, 300)">Y Coordinate</text>
+            </svg>
+        </div>
+        
+        <div class="legend" id="legend" style="display: none;">
+            <div class="legend-item">
+                <div class="legend-circle" style="background: #ff4757;"></div>
+                <span>Depot (Starting Point)</span>
+            </div>
+            <div class="legend-item">
+                <div class="legend-circle" style="background: #3742fa;"></div>
+                <span id="customerCount">Customers</span>
+            </div>
+        </div>
+        
+        <div class="stats" id="stats" style="display: none;">
+            <div class="stat-card">
+                <div class="stat-title">Total Locations</div>
+                <div class="stat-value" id="totalLocations">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Customers</div>
+                <div class="stat-value" id="customersCount">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Depot Location</div>
+                <div class="stat-value" id="depotLocation">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Area Coverage</div>
+                <div class="stat-value" id="areaCoverage">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Total Demand</div>
+                <div class="stat-value" id="totalDemand">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Time Span</div>
+                <div class="stat-value" id="timeSpan">-</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tooltip" id="tooltip"></div>
+
+    <script>
+        // GitHub repository configuration
+        const GITHUB_REPO = 'DataGems/Solomon_Instance_Viewer';
+        const DATA_BRANCH = 'main';
+        const DATA_FOLDER = 'data';
+
+        // Available instances - organized by type
+        const instances = {
+            'C Series (Clustered)': [
+                'jy_c101.txt', 'jy_c102.txt', 'jy_c103.txt', 'jy_c104.txt', 'jy_c105.txt',
+                'jy_c106.txt', 'jy_c107.txt', 'jy_c108.txt', 'jy_c109.txt',
+                'jy_c201.txt', 'jy_c202.txt', 'jy_c203.txt', 'jy_c204.txt', 'jy_c205.txt',
+                'jy_c206.txt', 'jy_c207.txt', 'jy_c208.txt'
+            ],
+            'R Series (Random)': [
+                'jy_r101.txt', 'jy_r102.txt', 'jy_r103.txt', 'jy_r104.txt', 'jy_r105.txt',
+                'jy_r106.txt', 'jy_r107.txt', 'jy_r108.txt', 'jy_r109.txt', 'jy_r110.txt',
+                'jy_r111.txt', 'jy_r112.txt',
+                'jy_r201.txt', 'jy_r202.txt', 'jy_r203.txt', 'jy_r204.txt', 'jy_r205.txt',
+                'jy_r206.txt', 'jy_r207.txt', 'jy_r208.txt', 'jy_r209.txt', 'jy_r210.txt',
+                'jy_r211.txt'
+            ],
+            'RC Series (Random-Clustered)': [
+                'jy_rc101.txt', 'jy_rc102.txt', 'jy_rc103.txt', 'jy_rc104.txt', 'jy_rc105.txt',
+                'jy_rc106.txt', 'jy_rc107.txt', 'jy_rc108.txt',
+                'jy_rc201.txt', 'jy_rc202.txt', 'jy_rc203.txt', 'jy_rc204.txt', 'jy_rc205.txt',
+                'jy_rc206.txt', 'jy_rc207.txt', 'jy_rc208.txt'
+            ],
+            'CSV Format': [
+                'jy_101.csv', 'jy_102.csv', 'jy_103.csv', 'jy_104.csv', 'jy_105.csv',
+                'jy_106.csv', 'jy_107.csv', 'jy_108.csv', 'jy_109.csv'
+            ]
+        };
+
+        // DOM elements
+        const instanceSelect = document.getElementById('instanceSelect');
+        const instanceInfo = document.getElementById('instanceInfo');
+        const loadingMessage = document.getElementById('loadingMessage');
+        const errorMessage = document.getElementById('errorMessage');
+        const plotContainer = document.getElementById('plotContainer');
+        const legend = document.getElementById('legend');
+        const stats = document.getElementById('stats');
+        const tooltip = document.getElementById('tooltip');
+
+        // Populate dropdown
+        function populateDropdown() {
+            Object.keys(instances).forEach(category => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = category;
+                
+                instances[category].forEach(filename => {
+                    const option = document.createElement('option');
+                    option.value = filename;
+                    option.textContent = filename.replace('jy_', '').replace(/\.(txt|csv)$/, '').toUpperCase();
+                    optgroup.appendChild(option);
+                });
+                
+                instanceSelect.appendChild(optgroup);
+            });
+        }
+
+        // Parse instance data
+        function parseInstanceData(rawData) {
+            const lines = rawData.trim().split('\n');
+            return lines.map((line, index) => {
+                const values = line.split(',').map(v => parseFloat(v.trim()));
+                return {
+                    id: index,
+                    x: values[0],
+                    y: values[1],
+                    demand: values[2],
+                    ready_time: values[3],
+                    due_date: values[4],
+                    service_time: values[5],
+                    type: index === 0 ? 'depot' : 'customer'
+                };
+            });
+        }
+
+        // Clear previous visualization
+        function clearVisualization() {
+            document.getElementById('locations').innerHTML = '';
+            document.getElementById('gridLines').innerHTML = '';
+        }
+
+        // Create visualization
+        function createVisualization(locations) {
+            clearVisualization();
+
+            const xCoords = locations.map(l => l.x);
+            const yCoords = locations.map(l => l.y);
+            const xMin = Math.min(...xCoords);
+            const xMax = Math.max(...xCoords);
+            const yMin = Math.min(...yCoords);
+            const yMax = Math.max(...yCoords);
+
+            const plotWidth = 680;
+            const plotHeight = 480;
+            const margin = 20;
+            
+            const xScale = (plotWidth - 2 * margin) / (xMax - xMin);
+            const yScale = (plotHeight - 2 * margin) / (yMax - yMin);
+            const scale = Math.min(xScale, yScale);
+
+            function scaleX(x) {
+                return margin + (x - xMin) * scale;
+            }
+
+            function scaleY(y) {
+                return -(margin + (y - yMin) * scale);
+            }
+
+            const locationsGroup = document.getElementById('locations');
+
+            locations.forEach(location => {
+                const cx = scaleX(location.x);
+                const cy = scaleY(location.y);
+
+                if (location.type === 'depot') {
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', cx);
+                    circle.setAttribute('cy', cy);
+                    circle.setAttribute('r', '12');
+                    circle.setAttribute('class', 'depot');
+                    
+                    const text = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+                    text.setAttribute('x', cx);
+                    text.setAttribute('y', cy + 4);
+                    text.setAttribute('class', 'depot-label');
+                    text.textContent = 'D';
+                    
+                    locationsGroup.appendChild(circle);
+                    locationsGroup.appendChild(text);
+                } else {
+                    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+                    circle.setAttribute('cx', cx);
+                    circle.setAttribute('cy', cy);
+                    circle.setAttribute('r', '5');
+                    circle.setAttribute('class', 'customer');
+                    
+                    circle.addEventListener('mouseenter', (e) => {
+                        tooltip.style.opacity = '1';
+                        tooltip.innerHTML = `
+                            <strong>Customer ${location.id}</strong><br>
+                            Position: (${location.x}, ${location.y})<br>
+                            Demand: ${location.demand}<br>
+                            Time Window: [${location.due_date}, ${location.ready_time}]<br>
+                            Service Time: ${location.service_time}
+                        `;
+                    });
+                    
+                    circle.addEventListener('mousemove', (e) => {
+                        tooltip.style.left = e.pageX + 10 + 'px';
+                        tooltip.style.top = e.pageY - 10 + 'px';
+                    });
+                    
+                    circle.addEventListener('mouseleave', () => {
+                        tooltip.style.opacity = '0';
+                    });
+                    
+                    locationsGroup.appendChild(circle);
+                }
+            });
+
+            // Add grid lines
+            const gridLines = document.getElementById('gridLines');
+            const gridSpacing = Math.max(10, Math.ceil((xMax - xMin) / 10));
+            
+            for (let i = 0; i <= Math.ceil((xMax - xMin) / gridSpacing); i++) {
+                const x = scaleX(xMin + i * gridSpacing);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', x);
+                line.setAttribute('y1', 0);
+                line.setAttribute('x2', x);
+                line.setAttribute('y2', -plotHeight);
+                line.setAttribute('class', 'grid-line');
+                gridLines.appendChild(line);
+            }
+
+            for (let i = 0; i <= Math.ceil((yMax - yMin) / gridSpacing); i++) {
+                const y = scaleY(yMin + i * gridSpacing);
+                const line = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+                line.setAttribute('x1', 0);
+                line.setAttribute('y1', y);
+                line.setAttribute('x2', plotWidth);
+                line.setAttribute('y2', y);
+                line.setAttribute('class', 'grid-line');
+                gridLines.appendChild(line);
+            }
+
+            updateStatistics(locations, xMin, xMax, yMin, yMax);
+        }
+
+        function updateStatistics(locations, xMin, xMax, yMin, yMax) {
+            const customers = locations.filter(l => l.type === 'customer');
+            const depot = locations.find(l => l.type === 'depot');
+            
+            const totalDemand = customers.reduce((sum, c) => sum + c.demand, 0);
+            const allReadyTimes = customers.map(c => c.ready_time).filter(t => t < 9999);
+            const allDueDates = customers.map(c => c.due_date).filter(t => t > 0);
+            
+            const minTime = allDueDates.length > 0 ? Math.min(...allDueDates) : 0;
+            const maxTime = allReadyTimes.length > 0 ? Math.max(...allReadyTimes) : 0;
+
+            document.getElementById('totalLocations').textContent = locations.length;
+            document.getElementById('customersCount').textContent = customers.length;
+            document.getElementById('depotLocation').textContent = `(${depot.x}, ${depot.y})`;
+            document.getElementById('areaCoverage').textContent = `${Math.round(xMax - xMin)}×${Math.round(yMax - yMin)}`;
+            document.getElementById('totalDemand').textContent = totalDemand.toFixed(1);
+            document.getElementById('timeSpan').textContent = maxTime > minTime ? `${minTime}-${maxTime}` : 'N/A';
+            document.getElementById('customerCount').textContent = `Customers (${customers.length} locations)`;
+        }
+
+        // Load and display instance
+        async function loadInstance(filename) {
+            if (!filename) {
+                hideAllDisplays();
+                return;
+            }
+
+            showLoading();
+            
+            try {
+                // Construct GitHub raw URL
+                const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${DATA_BRANCH}/${DATA_FOLDER}/${filename}`;
+                
+                const response = await fetch(url);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch ${filename}: ${response.status} ${response.statusText}`);
+                }
+                
+                const data = await response.text();
+                const locations = parseInstanceData(data);
+                
+                // Show instance info
+                const instanceName = filename.replace('jy_', '').replace(/\.(txt|csv)$/, '').toUpperCase();
+                const instanceType = filename.includes('_c') ? 'Clustered' : 
+                                   filename.includes('_r') && !filename.includes('_rc') ? 'Random' : 
+                                   filename.includes('_rc') ? 'Random-Clustered' : 'Unknown';
+                
+                instanceInfo.innerHTML = `<strong>${instanceName}</strong> - ${instanceType} Instance (${locations.length - 1} customers)`;
+                
+                createVisualization(locations);
+                showVisualization();
+                hideError();
+                
+            } catch (error) {
+                console.error('Error loading instance:', error);
+                showError(`Failed to load instance: ${error.message}. Make sure the data files are uploaded to the 'data' folder in your GitHub repository.`);
+                hideVisualization();
+            }
+            
+            hideLoading();
+        }
+
+        // Display control functions
+        function showLoading() {
+            loadingMessage.style.display = 'block';
+            hideVisualization();
+        }
+
+        function hideLoading() {
+            loadingMessage.style.display = 'none';
+        }
+
+        function showVisualization() {
+            instanceInfo.style.display = 'block';
+            plotContainer.style.display = 'block';
+            legend.style.display = 'flex';
+            stats.style.display = 'grid';
+        }
+
+        function hideVisualization() {
+            instanceInfo.style.display = 'none';
+            plotContainer.style.display = 'none';
+            legend.style.display = 'none';
+            stats.style.display = 'none';
+        }
+
+        function showError(message) {
+            errorMessage.textContent = message;
+            errorMessage.style.display = 'block';
+        }
+
+        function hideError() {
+            errorMessage.style.display = 'none';
+        }
+
+        function hideAllDisplays() {
+            hideVisualization();
+            hideError();
+        }
+
+        // Event listeners
+        instanceSelect.addEventListener('change', (e) => {
+            loadInstance(e.target.value);
+        });
+
+        // Initialize
+        populateDropdown();
+        
+        // Load R208 by default once data is available
+        // instanceSelect.value = 'jy_r208.txt';
+        // loadInstance('jy_r208.txt');
+    </script>
+</body>
+</html>
