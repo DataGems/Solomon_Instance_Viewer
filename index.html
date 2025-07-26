@@ -59,7 +59,7 @@
             color: #333;
         }
         
-        select {
+        select, .file-input-wrapper {
             padding: 10px 15px;
             border: 2px solid #ddd;
             border-radius: 8px;
@@ -69,9 +69,52 @@
             transition: border-color 0.3s ease;
         }
         
-        select:focus {
+        select:focus, .file-input-wrapper:hover {
             outline: none;
             border-color: #667eea;
+        }
+        
+        .file-input-wrapper {
+            position: relative;
+            overflow: hidden;
+            display: inline-block;
+        }
+        
+        .file-input-wrapper input[type=file] {
+            position: absolute;
+            left: -9999px;
+        }
+        
+        .file-input-wrapper:hover {
+            background: #f8f9fa;
+        }
+        
+        .upload-zone {
+            border: 2px dashed #667eea;
+            border-radius: 10px;
+            padding: 40px;
+            text-align: center;
+            margin: 20px 0;
+            background: #f8f9fa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-zone:hover {
+            border-color: #5a67d8;
+            background: #e6f3ff;
+        }
+        
+        .upload-zone.dragover {
+            border-color: #5a67d8;
+            background: #e6f3ff;
+            transform: scale(1.02);
+        }
+        
+        .upload-icon {
+            font-size: 3em;
+            color: #667eea;
+            margin-bottom: 15px;
         }
         
         .instance-info {
@@ -232,48 +275,76 @@
             border-radius: 8px;
             margin: 20px 0;
         }
-
-        .github-link {
-            position: fixed;
-            top: 20px;
-            right: 20px;
-            background: rgba(0,0,0,0.8);
-            color: white;
-            padding: 10px 15px;
-            border-radius: 25px;
-            text-decoration: none;
-            font-size: 14px;
-            transition: all 0.3s ease;
+        
+        .instructions {
+            background: #e8f4f8;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #667eea;
         }
         
-        .github-link:hover {
-            background: rgba(0,0,0,0.9);
-            transform: scale(1.05);
+        .instructions h3 {
+            margin-top: 0;
+            color: #333;
+        }
+        
+        .instructions p {
+            margin-bottom: 8px;
+            color: #555;
+        }
+        
+        .sample-data {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
         }
     </style>
 </head>
 <body>
-    <a href="https://github.com/DataGems/Solomon_Instance_Viewer" class="github-link" target="_blank">
-        📁 View Source
-    </a>
-
     <div class="container">
         <h1>🚛 Solomon Instances Interactive Viewer</h1>
         <div class="subtitle">Vehicle Routing Problem Benchmark Instances</div>
         
-        <div class="controls">
-            <div class="control-group">
-                <label for="instanceSelect">Select Instance:</label>
-                <select id="instanceSelect">
-                    <option value="">Choose an instance...</option>
+        <div class="instructions">
+            <h3>📁 How to Use</h3>
+            <p><strong>Option 1:</strong> Click the upload zone below to select a Solomon instance file</p>
+            <p><strong>Option 2:</strong> Drag and drop a .txt or .csv file onto the upload zone</p>
+            <p><strong>Customer Count:</strong> You can choose to display 25, 50, or all 100 customers from each instance</p>
+            <p><strong>Data Format:</strong> Each line should contain: x_coord, y_coord, demand, ready_time, due_date, service_time</p>
+            
+            <div class="sample-data">
+                <strong>Example data format:</strong><br>
+                40.000000,50.000000,20.000000,1236.000000,0.000000,100.000000<br>
+                45.000000,68.000000,1.000000,324.000000,269.000000,90.000000<br>
+                45.000000,70.000000,3.000000,411.000000,366.000000,90.000000
+            </div>
+        </div>
+        
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">📁</div>
+            <h3>Upload Solomon Instance File</h3>
+            <p>Click here or drag & drop a .txt or .csv file</p>
+            <div style="margin: 15px 0;">
+                <label for="customerCountSelect" style="color: #667eea; font-weight: 600;">Customer Count:</label>
+                <select id="customerCountSelect" style="margin-left: 10px; padding: 5px 10px; border: 2px solid #667eea; border-radius: 5px;">
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100" selected>100</option>
                 </select>
             </div>
+            <p style="font-size: 0.9em; color: #666;">Supports Solomon benchmark format</p>
+            <input type="file" id="fileInput" accept=".txt,.csv" style="display: none;">
         </div>
         
         <div id="instanceInfo" class="instance-info" style="display: none;"></div>
         
         <div id="loadingMessage" class="loading" style="display: none;">
-            Loading instance data...
+            Processing instance data...
         </div>
         
         <div id="errorMessage" class="error" style="display: none;"></div>
@@ -341,41 +412,10 @@
     <div class="tooltip" id="tooltip"></div>
 
     <script>
-        // GitHub repository configuration
-        const GITHUB_REPO = 'DataGems/Solomon_Instance_Viewer';
-        const DATA_BRANCH = 'main';
-        const DATA_FOLDER = 'data';
-
-        // Available instances - organized by type
-        const instances = {
-            'C Series (Clustered)': [
-                'jy_c101.txt', 'jy_c102.txt', 'jy_c103.txt', 'jy_c104.txt', 'jy_c105.txt',
-                'jy_c106.txt', 'jy_c107.txt', 'jy_c108.txt', 'jy_c109.txt',
-                'jy_c201.txt', 'jy_c202.txt', 'jy_c203.txt', 'jy_c204.txt', 'jy_c205.txt',
-                'jy_c206.txt', 'jy_c207.txt', 'jy_c208.txt'
-            ],
-            'R Series (Random)': [
-                'jy_r101.txt', 'jy_r102.txt', 'jy_r103.txt', 'jy_r104.txt', 'jy_r105.txt',
-                'jy_r106.txt', 'jy_r107.txt', 'jy_r108.txt', 'jy_r109.txt', 'jy_r110.txt',
-                'jy_r111.txt', 'jy_r112.txt',
-                'jy_r201.txt', 'jy_r202.txt', 'jy_r203.txt', 'jy_r204.txt', 'jy_r205.txt',
-                'jy_r206.txt', 'jy_r207.txt', 'jy_r208.txt', 'jy_r209.txt', 'jy_r210.txt',
-                'jy_r211.txt'
-            ],
-            'RC Series (Random-Clustered)': [
-                'jy_rc101.txt', 'jy_rc102.txt', 'jy_rc103.txt', 'jy_rc104.txt', 'jy_rc105.txt',
-                'jy_rc106.txt', 'jy_rc107.txt', 'jy_rc108.txt',
-                'jy_rc201.txt', 'jy_rc202.txt', 'jy_rc203.txt', 'jy_rc204.txt', 'jy_rc205.txt',
-                'jy_rc206.txt', 'jy_rc207.txt', 'jy_rc208.txt'
-            ],
-            'CSV Format': [
-                'jy_101.csv', 'jy_102.csv', 'jy_103.csv', 'jy_104.csv', 'jy_105.csv',
-                'jy_106.csv', 'jy_107.csv', 'jy_108.csv', 'jy_109.csv'
-            ]
-        };
-
         // DOM elements
-        const instanceSelect = document.getElementById('instanceSelect');
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const customerCountSelect = document.getElementById('customerCountSelect');
         const instanceInfo = document.getElementById('instanceInfo');
         const loadingMessage = document.getElementById('loadingMessage');
         const errorMessage = document.getElementById('errorMessage');
@@ -384,27 +424,14 @@
         const stats = document.getElementById('stats');
         const tooltip = document.getElementById('tooltip');
 
-        // Populate dropdown
-        function populateDropdown() {
-            Object.keys(instances).forEach(category => {
-                const optgroup = document.createElement('optgroup');
-                optgroup.label = category;
-                
-                instances[category].forEach(filename => {
-                    const option = document.createElement('option');
-                    option.value = filename;
-                    option.textContent = filename.replace('jy_', '').replace(/\.(txt|csv)$/, '').toUpperCase();
-                    optgroup.appendChild(option);
-                });
-                
-                instanceSelect.appendChild(optgroup);
-            });
-        }
-
         // Parse instance data
-        function parseInstanceData(rawData) {
+        function parseInstanceData(rawData, maxCustomers = 100) {
             const lines = rawData.trim().split('\n');
-            return lines.map((line, index) => {
+            // Always include depot (index 0) + the specified number of customers
+            const linesToInclude = Math.min(lines.length, maxCustomers + 1);
+            const selectedLines = lines.slice(0, linesToInclude);
+            
+            return selectedLines.map((line, index) => {
                 const values = line.split(',').map(v => parseFloat(v.trim()));
                 return {
                     id: index,
@@ -426,7 +453,7 @@
         }
 
         // Create visualization
-        function createVisualization(locations) {
+        function createVisualization(locations, filename = '') {
             clearVisualization();
 
             const xCoords = locations.map(l => l.x);
@@ -530,10 +557,10 @@
                 gridLines.appendChild(line);
             }
 
-            updateStatistics(locations, xMin, xMax, yMin, yMax);
+            updateStatistics(locations, xMin, xMax, yMin, yMax, filename);
         }
 
-        function updateStatistics(locations, xMin, xMax, yMin, yMax) {
+        function updateStatistics(locations, xMin, xMax, yMin, yMax, filename) {
             const customers = locations.filter(l => l.type === 'customer');
             const depot = locations.find(l => l.type === 'depot');
             
@@ -551,48 +578,74 @@
             document.getElementById('totalDemand').textContent = totalDemand.toFixed(1);
             document.getElementById('timeSpan').textContent = maxTime > minTime ? `${minTime}-${maxTime}` : 'N/A';
             document.getElementById('customerCount').textContent = `Customers (${customers.length} locations)`;
+            
+            // Update instance info
+            if (filename) {
+                const instanceName = filename.replace(/^jy_/, '').replace(/\.(txt|csv)$/, '').toUpperCase();
+                const instanceType = filename.includes('_c') ? 'Clustered' : 
+                                   filename.includes('_r') && !filename.includes('_rc') ? 'Random' : 
+                                   filename.includes('_rc') ? 'Random-Clustered' : 'Custom';
+                instanceInfo.innerHTML = `<strong>${instanceName}</strong> - ${instanceType} Instance (${customers.length} customers shown)`;
+            } else {
+                instanceInfo.innerHTML = `<strong>Custom Instance</strong> (${customers.length} customers shown)`;
+            }
         }
 
-        // Load and display instance
-        async function loadInstance(filename) {
-            if (!filename) {
-                hideAllDisplays();
-                return;
-            }
+        // State management
+        let currentFileData = null;
+        let currentFileName = null;
 
+        async function processFile(file) {
             showLoading();
             
             try {
-                // Construct GitHub raw URL
-                const url = `https://raw.githubusercontent.com/${GITHUB_REPO}/${DATA_BRANCH}/${DATA_FOLDER}/${filename}`;
+                const data = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target.result);
+                    reader.onerror = () => reject(new Error('File read error'));
+                    reader.readAsText(file);
+                });
                 
-                const response = await fetch(url);
-                if (!response.ok) {
-                    throw new Error(`Failed to fetch ${filename}: ${response.status} ${response.statusText}`);
-                }
+                // Store file data for reprocessing when customer count changes
+                currentFileData = data;
+                currentFileName = file.name;
                 
-                const data = await response.text();
-                const locations = parseInstanceData(data);
+                // Get selected customer count
+                const maxCustomers = parseInt(customerCountSelect.value);
+                const locations = parseInstanceData(data, maxCustomers);
                 
-                // Show instance info
-                const instanceName = filename.replace('jy_', '').replace(/\.(txt|csv)$/, '').toUpperCase();
-                const instanceType = filename.includes('_c') ? 'Clustered' : 
-                                   filename.includes('_r') && !filename.includes('_rc') ? 'Random' : 
-                                   filename.includes('_rc') ? 'Random-Clustered' : 'Unknown';
-                
-                instanceInfo.innerHTML = `<strong>${instanceName}</strong> - ${instanceType} Instance (${locations.length - 1} customers)`;
-                
-                createVisualization(locations);
+                createVisualization(locations, file.name);
                 showVisualization();
                 hideError();
                 
             } catch (error) {
-                console.error('Error loading instance:', error);
-                showError(`Failed to load instance: ${error.message}. Make sure the data files are uploaded to the 'data' folder in your GitHub repository.`);
+                console.error('Error processing file:', error);
+                showError(`Failed to process file: ${error.message}`);
                 hideVisualization();
             }
             
             hideLoading();
+        }
+
+        function reprocessCurrentFile() {
+            if (currentFileData && currentFileName) {
+                showLoading();
+                
+                try {
+                    const maxCustomers = parseInt(customerCountSelect.value);
+                    const locations = parseInstanceData(currentFileData, maxCustomers);
+                    
+                    createVisualization(locations, currentFileName);
+                    showVisualization();
+                    hideError();
+                } catch (error) {
+                    console.error('Error reprocessing file:', error);
+                    showError(`Failed to reprocess file: ${error.message}`);
+                    hideVisualization();
+                }
+                
+                hideLoading();
+            }
         }
 
         // Display control functions
@@ -628,22 +681,45 @@
             errorMessage.style.display = 'none';
         }
 
-        function hideAllDisplays() {
-            hideVisualization();
-            hideError();
-        }
-
         // Event listeners
-        instanceSelect.addEventListener('change', (e) => {
-            loadInstance(e.target.value);
+        uploadZone.addEventListener('click', (e) => {
+            // Don't trigger file input if clicking on the dropdown
+            if (e.target === customerCountSelect || customerCountSelect.contains(e.target)) {
+                return;
+            }
+            fileInput.click();
         });
 
-        // Initialize
-        populateDropdown();
-        
-        // Load R208 by default once data is available
-        // instanceSelect.value = 'jy_r208.txt';
-        // loadInstance('jy_r208.txt');
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) {
+                processFile(e.target.files[0]);
+            }
+        });
+
+        customerCountSelect.addEventListener('change', () => {
+            reprocessCurrentFile();
+        });
+
+        // Drag and drop functionality
+        uploadZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadZone.classList.add('dragover');
+        });
+
+        uploadZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+        });
+
+        uploadZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadZone.classList.remove('dragover');
+            
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        });
     </script>
 </body>
 </html>
