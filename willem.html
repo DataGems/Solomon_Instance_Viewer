@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Willem Optimization Dashboard</title>
+    
+    <!-- Chart.js for plotting -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.2em;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 1.1em;
+        }
+        
+        .dashboard {
+            display: grid;
+            grid-template-columns: 300px 1fr 250px;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .controls {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .controls h3 {
+            margin-top: 0;
+            color: #444;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .control-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            color: #555;
+            font-weight: 500;
+        }
+        
+        select {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: white;
+            font-size: 14px;
+            cursor: pointer;
+            transition: border-color 0.3s;
+        }
+        
+        select:hover {
+            border-color: #667eea;
+        }
+        
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+        }
+        
+        .chart-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            position: relative;
+            height: 500px;  /* Fixed height for chart container */
+        }
+        
+        #iterationChart {
+            max-height: 400px;  /* Fixed max height for canvas */
+        }
+        
+        .stats-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        
+        .stats-panel h3 {
+            margin-top: 0;
+            color: #444;
+            border-bottom: 2px solid #764ba2;
+            padding-bottom: 10px;
+        }
+        
+        .stat-item {
+            margin-bottom: 15px;
+            padding: 10px;
+            background: white;
+            border-radius: 5px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        
+        .stat-label {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-top: 3px;
+        }
+        
+        .info-section {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f0f4ff;
+            border-radius: 5px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .info-label {
+            font-size: 12px;
+            color: #555;
+            margin-bottom: 3px;
+        }
+        
+        .info-value {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 50px;
+            color: #666;
+        }
+        
+        .error {
+            background: #ffe0e0;
+            color: #d00;
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        #chartTitle {
+            text-align: center;
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.3em;
+        }
+        
+        .no-data {
+            text-align: center;
+            padding: 50px;
+            color: #999;
+            font-style: italic;
+        }
+        
+        @media (max-width: 1200px) {
+            .dashboard {
+                grid-template-columns: 250px 1fr;
+            }
+            
+            .stats-panel {
+                grid-column: span 2;
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+                gap: 10px;
+            }
+            
+            .stats-panel h3 {
+                grid-column: span 4;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📊 Willem Optimization Dashboard</h1>
+        <p class="subtitle">Explore iteration-by-iteration results from optimization experiments</p>
+        
+        <div id="loading" class="loading">Loading data...</div>
+        <div id="error" class="error" style="display: none;"></div>
+        
+        <div id="dashboard" class="dashboard" style="display: none;">
+            <div class="controls">
+                <h3>🎛️ Controls</h3>
+                
+                <div class="control-group">
+                    <label for="instanceSelect">Instance</label>
+                    <select id="instanceSelect"></select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="customerSelect">Number of Customers</label>
+                    <select id="customerSelect"></select>
+                </div>
+                
+                <div class="control-group">
+                    <label for="variableSelect">Variable to Plot</label>
+                    <select id="variableSelect"></select>
+                </div>
+                
+                <div class="info-section">
+                    <h4 style="margin-top: 0;">📈 Data Info</h4>
+                    <div class="info-item">
+                        <div class="info-label">Total Iterations</div>
+                        <div class="info-value" id="totalIterations">-</div>
+                    </div>
+                    <div class="info-item" style="margin-top: 10px;">
+                        <div class="info-label">ILP Objective</div>
+                        <div class="info-value" id="ilpObjective">-</div>
+                    </div>
+                    <div class="info-item" style="margin-top: 10px;">
+                        <div class="info-label">ILP Time (s)</div>
+                        <div class="info-value" id="ilpTime">-</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="chart-container">
+                <h2 id="chartTitle">Select data to visualize</h2>
+                <canvas id="iterationChart"></canvas>
+                <div id="noData" class="no-data" style="display: none;">
+                    No data available for the selected combination
+                </div>
+            </div>
+            
+            <div class="stats-panel">
+                <h3>📋 Statistics</h3>
+                <div class="stat-item">
+                    <div class="stat-label">Mean</div>
+                    <div class="stat-value" id="statMean">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Min</div>
+                    <div class="stat-value" id="statMin">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Max</div>
+                    <div class="stat-value" id="statMax">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Final Value</div>
+                    <div class="stat-value" id="statFinal">-</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-label">Improvement</div>
+                    <div class="stat-value" id="statImprovement">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let willemData = [];
+        let currentChart = null;
+        
+        // Load data
+        async function loadData() {
+            try {
+                const response = await fetch('willem_data.json');
+                if (!response.ok) {
+                    throw new Error('Failed to load data file');
+                }
+                willemData = await response.json();
+                console.log(`Loaded ${willemData.length} experiments`);
+                initializeDashboard();
+            } catch (error) {
+                showError(`Error loading data: ${error.message}. Please make sure willem_data.json exists.`);
+            }
+        }
+        
+        function showError(message) {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('error').style.display = 'block';
+            document.getElementById('error').textContent = message;
+        }
+        
+        function initializeDashboard() {
+            document.getElementById('loading').style.display = 'none';
+            document.getElementById('dashboard').style.display = 'grid';
+            
+            // Populate customer dropdown
+            const customers = [...new Set(willemData.map(d => d.num_customers).filter(c => c !== null))].sort();
+            const customerSelect = document.getElementById('customerSelect');
+            customerSelect.innerHTML = customers.map(c => 
+                `<option value="${c}" ${c === 50 ? 'selected' : ''}>${c} customers</option>`
+            ).join('');
+            
+            // Set up event listeners
+            customerSelect.addEventListener('change', updateInstanceDropdown);
+            document.getElementById('instanceSelect').addEventListener('change', updateVariableDropdown);
+            document.getElementById('variableSelect').addEventListener('change', updateChart);
+            
+            // Initialize
+            updateInstanceDropdown();
+        }
+        
+        function updateInstanceDropdown() {
+            const selectedCustomers = parseInt(document.getElementById('customerSelect').value);
+            const filteredData = willemData.filter(d => d.num_customers === selectedCustomers);
+            const instances = [...new Set(filteredData.map(d => d.instance))].sort();
+            
+            const instanceSelect = document.getElementById('instanceSelect');
+            instanceSelect.innerHTML = instances.map(i => 
+                `<option value="${i}">${i}</option>`
+            ).join('');
+            
+            updateVariableDropdown();
+        }
+        
+        function updateVariableDropdown() {
+            const selectedCustomers = parseInt(document.getElementById('customerSelect').value);
+            const selectedInstance = document.getElementById('instanceSelect').value;
+            
+            const experiment = willemData.find(d => 
+                d.num_customers === selectedCustomers && d.instance === selectedInstance
+            );
+            
+            if (!experiment || !experiment.iter_data || experiment.iter_data.length === 0) {
+                document.getElementById('variableSelect').innerHTML = '<option>No data available</option>';
+                clearChart();
+                return;
+            }
+            
+            // Get available variables (excluding iteration and did_compress)
+            const variables = Object.keys(experiment.iter_data[0])
+                .filter(v => v !== 'iteration' && v !== 'did_compress');
+            
+            const variableSelect = document.getElementById('variableSelect');
+            variableSelect.innerHTML = variables.map(v => 
+                `<option value="${v}">${formatVariableName(v)}</option>`
+            ).join('');
+            
+            // Update info section
+            document.getElementById('totalIterations').textContent = experiment.iter_data.length;
+            document.getElementById('ilpObjective').textContent = 
+                experiment.OUR_ilp_objective ? experiment.OUR_ilp_objective.toFixed(2) : '-';
+            document.getElementById('ilpTime').textContent = 
+                experiment.OUR_ilp_time ? experiment.OUR_ilp_time.toFixed(3) : '-';
+            
+            updateChart();
+        }
+        
+        function formatVariableName(name) {
+            // Make variable names more readable
+            return name
+                .replace(/_/g, ' ')
+                .replace(/\b\w/g, l => l.toUpperCase())
+                .replace('Lblp', 'LBLP')
+                .replace('Ub Lp', 'UB LP')
+                .replace('Lp', 'LP')
+                .replace('Lb', 'LB')
+                .replace('Ng', 'NG');
+        }
+        
+        function formatNumber(value) {
+            // Format numbers: no decimals if integer, 2 decimals otherwise
+            if (value === null || value === undefined || isNaN(value)) {
+                return '-';
+            }
+            
+            // Check if it's effectively an integer
+            if (Math.abs(value % 1) < 1e-10) {
+                return Math.round(value).toString();
+            } else {
+                return value.toFixed(2);
+            }
+        }
+        
+        function updateChart() {
+            const selectedCustomers = parseInt(document.getElementById('customerSelect').value);
+            const selectedInstance = document.getElementById('instanceSelect').value;
+            const selectedVariable = document.getElementById('variableSelect').value;
+            
+            const experiment = willemData.find(d => 
+                d.num_customers === selectedCustomers && d.instance === selectedInstance
+            );
+            
+            if (!experiment || !experiment.iter_data || experiment.iter_data.length === 0) {
+                clearChart();
+                return;
+            }
+            
+            const iterations = experiment.iter_data.map(d => d.iteration);
+            const values = experiment.iter_data.map(d => d[selectedVariable]);
+            
+            // Update chart title
+            document.getElementById('chartTitle').textContent = 
+                `${selectedInstance} - ${formatVariableName(selectedVariable)}`;
+            
+            // Update statistics
+            const validValues = values.filter(v => v !== null && !isNaN(v));
+            if (validValues.length > 0) {
+                document.getElementById('statMean').textContent = 
+                    formatNumber(validValues.reduce((a, b) => a + b) / validValues.length);
+                document.getElementById('statMin').textContent = formatNumber(Math.min(...validValues));
+                document.getElementById('statMax').textContent = formatNumber(Math.max(...validValues));
+                document.getElementById('statFinal').textContent = formatNumber(validValues[validValues.length - 1]);
+                
+                if (validValues.length > 1) {
+                    const improvement = validValues[validValues.length - 1] - validValues[0];
+                    document.getElementById('statImprovement').textContent = formatNumber(improvement);
+                } else {
+                    document.getElementById('statImprovement').textContent = '-';
+                }
+            } else {
+                ['statMean', 'statMin', 'statMax', 'statFinal', 'statImprovement']
+                    .forEach(id => document.getElementById(id).textContent = '-');
+            }
+            
+            // Create or update chart
+            const ctx = document.getElementById('iterationChart').getContext('2d');
+            
+            if (currentChart) {
+                currentChart.destroy();
+            }
+            
+            document.getElementById('iterationChart').style.display = 'block';
+            document.getElementById('noData').style.display = 'none';
+            
+            currentChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: iterations,
+                    datasets: [{
+                        label: formatVariableName(selectedVariable),
+                        data: values,
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        pointRadius: 3,
+                        pointHoverRadius: 5,
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    aspectRatio: 2,  // Width:height ratio
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            borderColor: '#667eea',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return `Value: ${context.parsed.y.toFixed(6)}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: 'Iteration',
+                                font: {
+                                    size: 14
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            display: true,
+                            title: {
+                                display: true,
+                                text: formatVariableName(selectedVariable),
+                                font: {
+                                    size: 14
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            },
+                            beginAtZero: false,  // Let Chart.js auto-scale the y-axis
+                            suggestedMin: undefined,  // Let Chart.js determine the minimum
+                            suggestedMax: undefined   // Let Chart.js determine the maximum
+                        }
+                    }
+                }
+            });
+        }
+        
+        function clearChart() {
+            if (currentChart) {
+                currentChart.destroy();
+                currentChart = null;
+            }
+            document.getElementById('chartTitle').textContent = 'Select data to visualize';
+            document.getElementById('iterationChart').style.display = 'none';
+            document.getElementById('noData').style.display = 'block';
+            ['statMean', 'statMin', 'statMax', 'statFinal', 'statImprovement']
+                .forEach(id => document.getElementById(id).textContent = '-');
+        }
+        
+        // Load data when page loads
+        loadData();
+    </script>
+</body>
+</html>
